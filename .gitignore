@@ -1,0 +1,8 @@
+docker-stack/ansible-container
+docker-stack/traefik/git/**
+docker-stack/keys
+docker-stack/keys/office
+docker-stack/ansible/ansible-ap-billing/
+docker-stack/ansible/**
+docker-stack/ansible/ansible-infrastructure
+docker-stack/ansible/local-instance

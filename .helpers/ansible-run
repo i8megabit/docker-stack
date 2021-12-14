@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+#by @eberil
+
+ansible-run () {
+   script=`basename "$0"`
+   s="/"
+   symlink=$USER_BIN$s$script
+   if [ -L $symlink ]; then
+      docker-stack exec ansible /bin/bash $@
+      exit 0
+   else
+      ln -snf $SCRIPT_DIR/.helpers/$script $USER_BIN
+      if [ $? -eq 0 ]
+      then
+         echo -e "\e[32m Symlink succesfully created\e[0m"
+         exit 0
+      else
+         echo -e "\e[31m Create symlink failed\e[0m" >&2
+         exit 1
+     fi
+   fi
+}
+
+ansible-run $@

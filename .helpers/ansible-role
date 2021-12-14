@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+#by @eberil
+
+ansible-role () {
+   script=`basename "$0"`
+   s="/"
+   symlink=$USER_BIN$s$script
+   if [ -L $symlink ]; then
+      envfile=".env"
+      role=$1
+      sedfile=$SCRIPT_DIR$s$envfile
+      chmod 777 $sedfile
+      sed -i "1s/.*[ROLE].*/ANSIBLE_ROLE=$1/" $sedfile
+      echo $sedfile
+      cat $sedfile
+      cd $SCRIPT_DIR/ansible/$1
+      ansible-galaxy install -r requirements.yml
+      exit 0
+   else
+      ln -snf $SCRIPT_DIR/.helpers/$script $USER_BIN
+      if [ $? -eq 0 ]
+      then
+         echo -e "\e[32m Symlink succesfully created\e[0m"
+         exit 0
+      else
+         echo -e "\e[31m Create symlink failed\e[0m" >&2
+         exit 1
+     fi
+   fi
+}
+
+ansible-role $1

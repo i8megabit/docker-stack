@@ -1,0 +1,66 @@
+version: "3.3"
+
+services:
+
+  traefik:
+    image: ${IMAGE:-nexus.ap-team.ru/traefik:latest}
+    container_name: ${TRAEFIK_NAME:-traefik}
+    command:
+      - --log.level=${LOG_LEVEL:-DEBUG}
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.traefik.entrypoints=http"
+      - "traefik.http.routers.traefik.rule=Host(`traefik.ops.ap-team.ru`)"
+      - "traefik.http.routers.traefik.middlewares=redirect@file"
+
+      - "traefik.http.routers.traefik_secure.entrypoints=https"
+      - "traefik.http.routers.traefik_secure.rule=Host(`traefik.ops.ap-team.ru`)"
+      - "traefik.http.routers.traefik_secure.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.traefik_secure.service=api@internal"
+      - "traefik.docker.network=ops"
+    ports:
+      - "80:80" # The HTTP port
+      - "8080:8080" # The Web UI (enabled by --api)
+      - "443:443" # The HTTPS port
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ${SCRIPT_DIR}/${TRAEFIK_NAME:-traefik}/traefik.toml:/etc/traefik/traefik.toml
+      # Configuration for FILE Provider
+      - ${SCRIPT_DIR}/${TRAEFIK_NAME:-traefik}/provider_file.toml:/etc/traefik/provider_file.toml
+      - ${SCRIPT_DIR}/${TRAEFIK_NAME:-traefik}/acme.json:/acme.json
+    networks:
+      ops:
+       aliases:
+        - traefik
+  ansible:
+    image: ${IMAGE:-nexus.ap-team.ru/ansible:latest}
+    container_name: ${ANSIBLE_NAME:-ansible}
+    command: [ "/bin/sh", "-ec", "while :; do echo '.'; sleep 5 ; done" ]
+    env_file:
+      - .env
+    labels:
+      - "traefik.enable=true"
+      - "traefik.tcp.routers.ansible.rule=HostSNI(`ansible.ops.ap-team.ru`)"
+      - "traefik.tcp.routers.ansible.tls=true"
+      - "traefik.tcp.services.ansible.loadbalancer.server.port=22"
+      - "traefik.tcp.routers.ansible.entrypoints=ssh"
+      - "traefik.tcp.routers.ansible.service=ansible"
+      - "traefik.tcp.routers.ansible.tls.passthrough=true"
+      - "traefik.tcp.routers.ansible.tls.domains[0].main=ap-team.ru"
+      - "traefik.docker.network=ops"
+    ports:
+      - "2222:22" # The SSH port
+    volumes:
+      - ${SCRIPT_DIR}/${ANSIBLE_NAME:-ansible}/${ANSIBLE_ROLE:?Ansible role is not defined. Please, define in .env file}:/etc/ansible
+      - ${SCRIPT_DIR}/keys:/opt/keys
+    extra_hosts:
+      - "nexus:10.66.66.6"
+      - "nexus.ap-team.ru:10.55.55.5"
+    networks:
+      ops:
+       aliases:
+         - ansible
+
+networks:
+  ops:
+    external: true

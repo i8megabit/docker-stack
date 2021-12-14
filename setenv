@@ -1,0 +1,62 @@
+#!/usr/bin/env bash
+#by @eberil
+
+# fuctions
+setenv () {
+   echo $0
+   if [[ $1 = 'root' ]]
+   then
+   runuser=$1
+   echo "runuser is '$runuser'"
+   userdir="/root"
+   else
+   runuser=$(export | grep SUDO_USER | sed 's/declare\|-\|x\|SUDO_USER\|=\|"\| //g')
+   userdir=$(eval echo "~$USER")
+   fi
+   export USER=$runuser
+   shellfile=".bashrc"
+   s7r="/" # separator
+   bin="bin"
+   echo $USER
+   echo $userdir
+   scriptpath=$(readlink -e $0)
+   echo "scriptpath is '$scriptpath'"
+   scriptdir=$(dirname "$scriptpath")
+   echo "scriptdir is '$scriptdir'"
+   bindir=$userdir$s7r$bin
+   bashrcfile=$userdir$s7r$shellfile
+   echo "bindir is '$bindir'"
+   mkdir -p $bindir
+   chmod -R +x $bindir && chown -R $runuser:$sudo $bindir
+   ln -snf $scriptpath $bindir
+   ls -la $bindir
+   if [ $? -eq 1 ]
+   then
+      echo -e "\e[31m Failed\e[0m" >&2
+      exit 1
+   else
+      echo "export PATH=$PATH:$bindir" >> $bashrcfile
+      echo "export SCRIPT_DIR='$scriptdir'" >> $bashrcfile
+      echo "export SCRIPT_PATH='$scriptpath'" >> $bashrcfile
+      echo "export SETENV_SET='true'"  >> $bashrcfile
+      echo "export BASHRC_FILE='$bashrcfile'"  >> $bashrcfile
+      echo "export USER_BIN='$bindir'" >> $bashrcfile
+      source $bashrcfile
+      exit 0
+   fi
+}
+
+if [[ $(echo $SETENV_SET) != "true" ]]
+then
+   echo "Setup setenv started"
+   setenv $1
+   exit 0
+else
+   echo "'$0' Succesfully installed"
+   echo "export SETENV_SET='false'" >> $BASHRC_FILE
+   source $BASHRC_FILE
+   exit 0
+fi
+
+$scriptdir/docker-stack
+source $bashrcfile
